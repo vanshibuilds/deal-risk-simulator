@@ -5,7 +5,7 @@ An algorithmic, client-side financial engineering tool designed to stress-test
 commercial investment contracts and quantify down-tail risk.
 
 
-🔗 [**Live Interactive Demo**](https://vanshibuilds.github.io/deal-risk-simulator/)
+🔗 [**Live Interactive Demo**](https://vanshibuilds.github.io/index/)
 
 ## 🚀 Key Architectural Features
 * **Asymmetric Monte Carlo Engine:** Runs 4,000 parallel iterations utilizing skewed triangular and normal distributions to isolate value-destructive risks.
