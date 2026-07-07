@@ -4,6 +4,9 @@ Interactive appraisal engine for recurring-revenue deals — NPV, scenarios, Mon
 An algorithmic, client-side financial engineering tool designed to stress-test
 commercial investment contracts and quantify down-tail risk.
 
+
+🔗 [**Live Interactive Demo**](https://vanshibuilds.github.io/deal-risk-simulator/)
+
 ## 🚀 Key Architectural Features
 * **Asymmetric Monte Carlo Engine:** Runs 4,000 parallel iterations utilizing skewed triangular and normal distributions to isolate value-destructive risks.
 * **Numerical Bisection Solver:** Implements client-side bisection search algorithms to calculate annualized internal rate of return (IRR) and multi-variable break-evens dynamically.
