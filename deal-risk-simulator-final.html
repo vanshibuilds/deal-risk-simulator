@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deal Architecture &amp; Risk Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F8F6;
+    --panel:#FFFFFF;
+    --ink:#16233B;
+    --ink-soft:#4A5568;
+    --line:#D4DAD9;
+    --pos:#1F7A5C;
+    --pos-soft:#E4F0EB;
+    --neg:#B23A2E;
+    --neg-soft:#F6E8E6;
+    --base:#B98A2F;
+    --base-soft:#F5EDDC;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --serif:'Spectral',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{transition:none!important;animation:none!important} }
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+
+  /* ---------- masthead ---------- */
+  .masthead{border-bottom:3px double var(--ink);padding:34px 0 22px;margin-bottom:26px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+  .masthead h1{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.4vw,44px);line-height:1.08;margin:12px 0 10px}
+  .masthead .sub{max-width:720px;color:var(--ink-soft);font-size:15px}
+  .dealline{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px 26px;font-family:var(--mono);font-size:12.5px}
+  .dealline span b{font-weight:600}
+  .dealdesc{margin-top:12px;max-width:760px;color:var(--ink-soft);font-size:13.5px;font-style:italic}
+
+  /* ---------- section headers ---------- */
+  section{margin-top:44px}
+  .sechead{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:18px}
+  .sechead .no{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+  .sechead h2{font-family:var(--serif);font-weight:600;font-size:22px}
+  .sechead .hint{margin-left:auto;font-size:12.5px;color:var(--ink-soft)}
+
+  /* ---------- assumptions ---------- */
+  .scenariobar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+  .scenariobar .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-right:4px}
+  .scn{font-family:var(--mono);font-size:12.5px;padding:7px 14px;border:1px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer;border-radius:2px}
+  .scn:hover{background:var(--ink);color:#fff}
+  .scn:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+  .scn.active{background:var(--ink);color:#fff}
+  .scn.up.active{background:var(--pos);border-color:var(--pos)}
+  .scn.dn.active{background:var(--neg);border-color:var(--neg)}
+  .scn.bs.active{background:var(--base);border-color:var(--base)}
+
+  .grid-sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .ctl{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:13px 15px 11px}
+  .ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--ink-soft);margin-bottom:8px}
+  .ctl label output{font-family:var(--mono);font-weight:600;font-size:14px;color:var(--ink)}
+  .ctl input[type=range]{width:100%;accent-color:var(--ink);cursor:pointer}
+  .ctl input[type=range]:focus-visible{outline:2px solid var(--pos);outline-offset:3px}
+  .ctl .note{font-size:11px;color:var(--ink-soft);margin-top:6px}
+
+  /* ---------- KPI row ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--ink);border-radius:3px;padding:16px 18px}
+  .kpi .k-lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-soft)}
+  .kpi .k-val{font-family:var(--mono);font-weight:600;font-size:clamp(22px,2.6vw,28px);margin-top:6px}
+  .kpi .k-sub{font-size:12px;color:var(--ink-soft);margin-top:4px}
+  .kpi.good{border-top-color:var(--pos)} .kpi.good .k-val{color:var(--pos)}
+  .kpi.bad{border-top-color:var(--neg)} .kpi.bad .k-val{color:var(--neg)}
+
+  /* ---------- charts ---------- */
+  .chartcard{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:20px 18px 12px;margin-top:16px}
+  .chartcard h3{font-family:var(--serif);font-size:16.5px;font-weight:600;margin-bottom:2px}
+  .chartcard .ch-sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:10px}
+  .chartbox{position:relative;height:320px}
+  @media(max-width:640px){.chartbox{height:260px}}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:860px){.two-col{grid-template-columns:1fr}}
+
+  /* ---------- MC stats ---------- */
+  .mcstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+  .mcstat{border:1px solid var(--line);background:var(--panel);border-radius:3px;padding:12px 14px}
+  .mcstat .m-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft)}
+  .mcstat .m-val{font-family:var(--mono);font-weight:600;font-size:18px;margin-top:4px}
+
+  /* ---------- deal setup ---------- */
+  .setup{background:var(--panel);border:1px solid var(--ink);border-radius:3px;padding:18px;margin-bottom:20px}
+  .setup .setup-title{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+  .setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .fld label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px}
+  .fld input[type=text],.fld select{width:100%;font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:2px;background:var(--paper);color:var(--ink)}
+  .fld input[type=text]:focus-visible,.fld select:focus-visible{outline:2px solid var(--pos);outline-offset:1px}
+  .io-btns{display:flex;gap:8px}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.ghost:hover{background:var(--ink);color:#fff}
+  .btn.sm{padding:7px 12px;font-size:12px}
+
+  /* ---------- scenario table ---------- */
+  .scntable{width:100%;border-collapse:collapse;margin-top:16px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+  .scntable th,.scntable td{padding:10px 14px;text-align:right;border-bottom:1px solid var(--line)}
+  .scntable th:first-child,.scntable td:first-child{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+  .scntable thead th{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid var(--ink)}
+  .scntable td{font-family:var(--mono);font-weight:500}
+  .scntable td.pos{color:var(--pos)} .scntable td.neg{color:var(--neg)}
+  .scntable thead th.dn{color:var(--neg)} .scntable thead th.up{color:var(--pos)} .scntable thead th.bs{color:var(--base)}
+
+  /* ---------- breakevens ---------- */
+  .breakevens{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+  .be{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--base);border-radius:3px;padding:14px 18px}
+  .be .b-lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-soft)}
+  .be .b-val{font-family:var(--mono);font-weight:600;font-size:20px;margin-top:5px}
+  .be .b-sub{font-size:12px;color:var(--ink-soft);margin-top:4px}
+
+  /* ---------- memo ---------- */
+  .memo-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .btn{font-family:var(--mono);font-size:13px;padding:10px 18px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;border-radius:2px}
+  .btn:hover{background:#0d1626}
+  .btn:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+  .btn[disabled]{opacity:.5;cursor:wait}
+  .memo-status{font-size:12.5px;color:var(--ink-soft)}
+  .memo{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:3px;padding:26px 30px;font-size:14.5px;display:none;white-space:pre-wrap}
+  .memo.show{display:block}
+  .memo .memo-head{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px;white-space:normal}
+
+  /* ---------- methodology ---------- */
+  .method{font-size:13.5px;color:var(--ink-soft);max-width:820px}
+  .method p{margin-bottom:10px}
+  .method b{color:var(--ink)}
+  footer{margin-top:60px;border-top:3px double var(--ink);padding-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="kicker"><span>Commercial deal appraisal engine</span><span>Interactive model · illustrative figures</span></div>
+    <h1>Deal Architecture<br>&amp; Risk Simulator</h1>
+    <p class="sub">Define any recurring-revenue deal — a content licence, a SaaS contract, a partnership — and the engine prices it on incremental unit economics, stresses it across scenarios, and quantifies downside risk with Monte Carlo simulation.</p>
+    <div class="dealline">
+      <span>Appraising: <b id="mast-name">Streaming content licence</b></span>
+      <span>For: <b id="mast-company">Example streaming platform</b></span>
+      <span>Structure: <b id="mast-structure">Fixed commitment + revenue share</b></span>
+      <span>Term: <b id="mast-term">36 months</b></span>
+    </div>
+    <p class="dealdesc" id="mast-desc">Example deal: a 3-year exclusive licence of a flagship drama series, priced on incremental subscriber economics.</p>
+  </header>
+
+  <!-- ============ ASSUMPTIONS ============ -->
+  <section id="assumptions">
+    <div class="sechead"><span class="no">01</span><h2>Deal assumptions</h2><span class="hint">Drag any input — the whole appraisal recalculates live</span></div>
+
+    <div class="setup">
+      <div class="setup-title"><span>Deal setup — define any deal</span>
+        <span class="io-btns">
+          <button class="btn ghost sm" id="btn-export">Export deal (.json)</button>
+          <button class="btn ghost sm" id="btn-import">Import deal</button>
+          <input type="file" id="file-import" accept=".json,application/json" style="display:none">
+        </span>
+      </div>
+      <div class="setup-grid">
+        <div class="fld"><label for="s-template">Deal template</label>
+          <select id="s-template">
+            <option value="content" selected>Streaming content licence</option>
+            <option value="saas">B2B SaaS / data subscription</option>
+            <option value="app">Consumer app partnership</option>
+          </select>
+        </div>
+        <div class="fld"><label for="s-name">Deal name</label><input type="text" id="s-name" value="Streaming content licence" maxlength="60"></div>
+        <div class="fld"><label for="s-company">Company / committee</label><input type="text" id="s-company" value="Example: UK/EU subscription streaming platform" maxlength="80"></div>
+        <div class="fld"><label for="s-currency">Currency</label>
+          <select id="s-currency"><option value="£" selected>GBP £</option><option value="$">USD $</option><option value="€">EUR €</option></select>
+        </div>
+      </div>
+      <div class="setup-grid" style="margin-top:12px">
+        <div class="ctl">
+          <label for="i-term">Deal term <output id="o-term">36 mo</output></label>
+          <input type="range" id="i-term" min="12" max="60" step="6" value="36">
+          <div class="note">Appraisal window in months</div>
+        </div>
+        <div class="ctl">
+          <label for="i-ramp">Launch ramp <output id="o-ramp">3 mo</output></label>
+          <input type="range" id="i-ramp" min="1" max="6" step="1" value="3">
+          <div class="note">Months over which adds phase in, front-weighted</div>
+        </div>
+        <div class="ctl">
+          <label for="i-mgup">Fixed fee paid upfront <output id="o-mgup">70%</output></label>
+          <input type="range" id="i-mgup" min="30" max="100" step="5" value="70">
+          <div class="note">Remainder split equally across annual milestones</div>
+        </div>
+        <div class="ctl">
+          <label for="i-ops">Running ops cost <output id="o-ops">£45k/mo</output></label>
+          <input type="range" id="i-ops" min="0" max="150" step="5" value="45">
+          <div class="note">Monthly delivery, localisation &amp; support cost</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scenariobar" role="group" aria-label="Scenario presets">
+      <span class="lbl">Scenario</span>
+      <button class="scn dn" data-scn="downside">Downside</button>
+      <button class="scn bs active" data-scn="base">Base case</button>
+      <button class="scn up" data-scn="upside">Upside</button>
+    </div>
+
+    <div class="grid-sliders">
+      <div class="ctl">
+        <label for="i-uplift"><span id="lbl-uplift">Gross subscriber adds</span> <output id="o-uplift">260k</output></label>
+        <input type="range" id="i-uplift" min="80" max="500" step="5" value="260">
+        <div class="note">Incremental sign-ups attributed to the title, phased over launch quarter</div>
+      </div>
+      <div class="ctl">
+        <label for="i-churn">Cohort monthly churn <output id="o-churn">3.0%</output></label>
+        <input type="range" id="i-churn" min="1" max="8" step="0.1" value="3.0">
+        <div class="note">Decay rate of the acquired cohort</div>
+      </div>
+      <div class="ctl">
+        <label for="i-arpu"><span id="lbl-arpu">Blended ARPU</span> <output id="o-arpu">£6.99</output></label>
+        <input type="range" id="i-arpu" min="4" max="12" step="0.25" value="6.99">
+        <div class="note">Monthly revenue per acquired subscriber</div>
+      </div>
+      <div class="ctl">
+        <label for="i-margin">Contribution margin <output id="o-margin">70%</output></label>
+        <input type="range" id="i-margin" min="55" max="90" step="1" value="70">
+        <div class="note">Cohort revenue scored net of payment, delivery &amp; shared content costs</div>
+      </div>
+      <div class="ctl">
+        <label for="i-mg"><span id="lbl-mg">Minimum guarantee</span> <output id="o-mg">£16.0M</output></label>
+        <input type="range" id="i-mg" min="5" max="28" step="0.5" value="16">
+        <div class="note" id="note-mg">Contractual fixed fee — payment schedule set in deal setup</div>
+      </div>
+      <div class="ctl">
+        <label for="i-rs"><span id="lbl-rs">Revenue share</span> <output id="o-rs">10%</output></label>
+        <input type="range" id="i-rs" min="0" max="25" step="0.5" value="10">
+        <div class="note">Payable to licensor on cohort revenue, on top of MG</div>
+      </div>
+      <div class="ctl">
+        <label for="i-mkt">Launch marketing <output id="o-mkt">£3.5M</output></label>
+        <input type="range" id="i-mkt" min="1" max="8" step="0.25" value="3.5">
+        <div class="note">Campaign spend, weighted to launch quarter</div>
+      </div>
+      <div class="ctl">
+        <label for="i-ovr">Delivery cost variance <output id="o-ovr">+0%</output></label>
+        <input type="range" id="i-ovr" min="-20" max="50" step="1" value="0">
+        <div class="note">Overrun on marketing, localisation &amp; ops (MG is contractually fixed)</div>
+      </div>
+      <div class="ctl">
+        <label for="i-dr">Discount rate <output id="o-dr">10.0%</output></label>
+        <input type="range" id="i-dr" min="6" max="15" step="0.5" value="10">
+        <div class="note">Annual hurdle rate applied to monthly cash flows</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VERDICT ============ -->
+  <section id="verdict">
+    <div class="sechead"><span class="no">02</span><h2>Deal verdict</h2><span class="hint">Point estimates from current assumptions · probability from simulation</span></div>
+    <div class="kpis">
+      <div class="kpi" id="kpi-npv"><div class="k-lbl">Net present value</div><div class="k-val" id="v-npv">—</div><div class="k-sub">Deal-term cash flows @ hurdle rate</div></div>
+      <div class="kpi" id="kpi-irr"><div class="k-lbl">IRR (annualised)</div><div class="k-val" id="v-irr">—</div><div class="k-sub">vs hurdle rate <span id="v-hurdle">10.0%</span></div></div>
+      <div class="kpi" id="kpi-pb"><div class="k-lbl">Payback</div><div class="k-val" id="v-pb">—</div><div class="k-sub">First month cumulative cash ≥ 0</div></div>
+      <div class="kpi" id="kpi-prob"><div class="k-lbl">P(NPV &gt; 0)</div><div class="k-val" id="v-prob">—</div><div class="k-sub">From 4,000 Monte Carlo iterations</div></div>
+    </div>
+    <table class="scntable" aria-label="Scenario comparison">
+      <thead><tr><th>Scenario view</th><th class="dn">Downside</th><th class="bs">Base case</th><th class="up">Upside</th></tr></thead>
+      <tbody>
+        <tr><td>NPV</td><td id="st-npv-d">—</td><td id="st-npv-b">—</td><td id="st-npv-u">—</td></tr>
+        <tr><td>IRR</td><td id="st-irr-d">—</td><td id="st-irr-b">—</td><td id="st-irr-u">—</td></tr>
+        <tr><td>Payback</td><td id="st-pb-d">—</td><td id="st-pb-b">—</td><td id="st-pb-u">—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ BRIDGE + CASH ============ -->
+  <section id="bridge">
+    <div class="sechead"><span class="no">03</span><h2>Value bridge &amp; cash profile</h2></div>
+    <div class="two-col">
+      <div class="chartcard">
+        <h3>NPV bridge — where the value comes from</h3>
+        <div class="ch-sub">Present value of each driver, reconciling to deal NPV</div>
+        <div class="chartbox"><canvas id="ch-waterfall" role="img" aria-label="Waterfall chart bridging cohort revenue to net present value"></canvas></div>
+      </div>
+      <div class="chartcard">
+        <h3>Cumulative cash flow</h3>
+        <div class="ch-sub">Undiscounted, monthly — the J-curve and payback point</div>
+        <div class="chartbox"><canvas id="ch-cash" role="img" aria-label="Line chart of cumulative cash flow over 36 months"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MONTE CARLO ============ -->
+  <section id="risk">
+    <div class="sechead"><span class="no">04</span><h2>Risk simulation</h2><span class="hint">4,000 iterations · uncertainty on adds, churn &amp; cost variance</span></div>
+    <div class="chartcard">
+      <h3>Distribution of NPV outcomes</h3>
+      <div class="ch-sub">Each bar is a bucket of simulated outcomes — red mass is value destruction</div>
+      <div class="chartbox"><canvas id="ch-mc" role="img" aria-label="Histogram of simulated NPV outcomes"></canvas></div>
+    </div>
+    <div class="mcstats">
+      <div class="mcstat"><div class="m-lbl">P5 (severe downside)</div><div class="m-val" id="mc-p5">—</div></div>
+      <div class="mcstat"><div class="m-lbl">P50 (median)</div><div class="m-val" id="mc-p50">—</div></div>
+      <div class="mcstat"><div class="m-lbl">P95 (upside)</div><div class="m-val" id="mc-p95">—</div></div>
+      <div class="mcstat"><div class="m-lbl">Expected NPV</div><div class="m-val" id="mc-mean">—</div></div>
+      <div class="mcstat"><div class="m-lbl">P(loss &gt; £5M)</div><div class="m-val" id="mc-tail">—</div></div>
+    </div>
+  </section>
+
+  <!-- ============ SENSITIVITY ============ -->
+  <section id="sens">
+    <div class="sechead"><span class="no">05</span><h2>Sensitivity &amp; break-evens</h2><span class="hint">One-way swings on NPV · where the deal stops working</span></div>
+    <div class="chartcard">
+      <h3>Tornado — what moves the answer</h3>
+      <div class="ch-sub">NPV at adverse and favourable ends of each driver, others held at current values</div>
+      <div class="chartbox" style="height:360px"><canvas id="ch-tornado" role="img" aria-label="Tornado chart of one-way NPV sensitivities"></canvas></div>
+    </div>
+    <div class="breakevens">
+      <div class="be"><div class="b-lbl">Break-even gross adds</div><div class="b-val" id="be-adds">—</div><div class="b-sub" id="be-adds-sub">Minimum sign-ups for NPV ≥ 0 at current terms</div></div>
+      <div class="be"><div class="b-lbl">Break-even cohort churn</div><div class="b-val" id="be-churn">—</div><div class="b-sub" id="be-churn-sub">Maximum monthly churn the deal can absorb</div></div>
+      <div class="be"><div class="b-lbl">Max supportable MG</div><div class="b-val" id="be-mg">—</div><div class="b-sub">Largest minimum guarantee before NPV turns negative</div></div>
+    </div>
+  </section>
+
+  <!-- ============ MEMO ============ -->
+  <section id="memo-sec">
+    <div class="sechead"><span class="no">06</span><h2>Committee memo</h2><span class="hint">Generated from the live numbers, in board-pack register</span></div>
+    <div class="memo-actions">
+      <button class="btn" id="btn-memo">Generate deal memo</button>
+      <span class="memo-status" id="memo-status">Uses the current assumptions and simulation results.</span>
+    </div>
+    <div class="memo" id="memo-box">
+      <div class="memo-head" id="memo-head-line">Investment committee pre-read</div><span id="memo-body"></span>
+    </div>
+  </section>
+
+  <!-- ============ METHODOLOGY ============ -->
+  <section id="method">
+    <div class="sechead"><span class="no">07</span><h2>Methodology notes</h2></div>
+    <div class="method">
+      <p><b>Generality.</b> The engine appraises any recurring-revenue deal that fits the shape: an acquired cohort of units (subscribers, customers, users) paying a monthly price, decaying at a churn rate, against a fixed commitment, a revenue share and launch costs. Templates re-range the inputs for streaming licences, B2B subscriptions and app partnerships; term, ramp, payment schedule and currency are all configurable, and any deal can be exported to a JSON file and re-imported later.</p>
+      <p><b>Revenue build.</b> Gross adds phase in front-weighted across the configurable launch ramp and the cohort decays at the monthly churn rate; revenue is cohort size × ARPU per month over the deal term, scored at contribution margin — net of payment processing, delivery and shared content costs — rather than gross revenue. Only incremental economics are scored — the base business is deliberately excluded so the deal stands on its own.</p>
+      <p><b>Cost build.</b> The fixed commitment is paid at signing per the configurable upfront percentage, with the remainder split equally across annual milestones inside the term. Revenue share accrues monthly on cohort revenue. Marketing is weighted to launch; localisation &amp; ops run monthly. The delivery cost variance lever stresses the controllable cost base only, since the MG cannot overrun.</p>
+      <p><b>Appraisal.</b> NPV discounts monthly net cash flows at the annual hurdle rate converted to a monthly equivalent. IRR is solved by bisection on monthly flows and annualised. Payback is the first month cumulative undiscounted cash turns positive.</p>
+      <p><b>Sensitivity.</b> The tornado flexes one driver at a time between an adverse and favourable bound (e.g. adds ±25%, churn ±1pp, margin ±5pp) with all others held constant, ranking drivers by NPV swing. Break-evens are solved by bisection: the gross adds, churn rate and minimum guarantee at which NPV crosses zero, holding all other terms.</p>
+      <p><b>Simulation.</b> Each iteration draws gross adds from a triangular distribution (skewed to under-delivery), churn from a clamped normal around the input, and cost variance from a triangular distribution skewed to overrun — reflecting the empirical asymmetry of content deals. 4,000 iterations produce the NPV distribution, percentiles and probability of value creation.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Built by Vanshi · deal appraisal &amp; risk modelling portfolio piece</span>
+    <span>All figures illustrative · mock company</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ================= MODEL ================= */
+function phasing(n) { // front-weighted weights over n months
+  const w = Array.from({ length: n }, (_, i) => n - i);
+  const t = w.reduce((a, b) => a + b, 0);
+  return w.map(x => x / t);
+}
+function mgSchedule(upfront, months) { // {monthIndex: fraction}
+  const sched = { 0: upfront };
+  const annivs = [];
+  for (let m = 12; m < months; m += 12) annivs.push(m);
+  const rem = 1 - upfront;
+  if (rem > 0 && annivs.length) annivs.forEach(m => sched[m] = rem / annivs.length);
+  else sched[0] = 1;
+  return sched;
+}
+
+function runDeal(p) {
+  // p: { adds, churn (0-1 monthly), arpu, margin (0-1), mg, rs (0-1), mkt, ovr (multiplier), drAnnual (0-1),
+  //      months, ramp, mgUp (0-1), ops (monthly) }
+  const dm = Math.pow(1 + p.drAnnual, 1 / 12) - 1;
+  const addW = phasing(p.ramp);
+  const sched = mgSchedule(p.mgUp, p.months);
+  let subs = 0, cum = 0, payback = null;
+  const cumSeries = [], netCFs = [];
+  let pvRev = 0, pvContrib = 0, pvRS = 0, pvMG = 0, pvMktOps = 0, npv = 0;
+
+  for (let m = 0; m < p.months; m++) {
+    subs = subs * (1 - p.churn) + (m < p.ramp ? p.adds * addW[m] : 0);
+    const rev = subs * p.arpu;
+    const contrib = rev * p.margin;
+    const rs = rev * p.rs;
+    const mgCash = (sched[m] || 0) * p.mg;
+    const mkt = (m < p.ramp ? p.mkt * addW[m] : 0) * p.ovr;
+    const ops = p.ops * p.ovr;
+    const net = contrib - rs - mgCash - mkt - ops;
+
+    const df = 1 / Math.pow(1 + dm, m + 1);
+    pvRev += rev * df; pvContrib += contrib * df; pvRS += rs * df; pvMG += mgCash * df; pvMktOps += (mkt + ops) * df;
+    npv += net * df;
+
+    cum += net;
+    cumSeries.push(cum);
+    netCFs.push(net);
+    if (payback === null && cum >= 0) payback = m + 1;
+  }
+  return { npv, pvRev, pvContrib, pvRS, pvMG, pvMktOps, cumSeries, netCFs, payback };
+}
+
+function irrAnnual(netCFs) {
+  const npvAt = r => netCFs.reduce((s, cf, m) => s + cf / Math.pow(1 + r, m + 1), 0);
+  let lo = -0.5, hi = 1.0;
+  if (npvAt(lo) * npvAt(hi) > 0) return null;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    (npvAt(lo) * npvAt(mid) <= 0) ? hi = mid : lo = mid;
+  }
+  return Math.pow(1 + (lo + hi) / 2, 12) - 1;
+}
+
+/* ================= INPUTS & TEMPLATES ================= */
+const $ = id => document.getElementById(id);
+const inputs = { uplift: $('i-uplift'), churn: $('i-churn'), arpu: $('i-arpu'), margin: $('i-margin'), mg: $('i-mg'), rs: $('i-rs'), mkt: $('i-mkt'), ovr: $('i-ovr'), dr: $('i-dr'), term: $('i-term'), ramp: $('i-ramp'), mgup: $('i-mgup'), ops: $('i-ops') };
+let CUR = '£';
+let UNIT = { scale: 1000, suffix: 'k', noun: 'subscriber adds' };
+
+const TEMPLATES = {
+  content: {
+    unit: { scale: 1000, suffix: 'k', noun: 'subscriber adds' },
+    labels: { uplift: 'Gross subscriber adds', arpu: 'Blended ARPU', mg: 'Minimum guarantee', rs: 'Revenue share' },
+    ranges: { uplift: [80, 500, 5, 260], arpu: [4, 12, 0.25, 6.99], mg: [5, 28, 0.5, 16] },
+    values: { churn: 3.0, margin: 70, rs: 10, mkt: 3.5, ovr: 0, dr: 10, term: 36, ramp: 3, mgup: 70, ops: 45 },
+    meta: { name: 'Streaming content licence', company: 'Example: UK/EU subscription streaming platform', structure: 'Minimum guarantee + revenue share',
+      desc: 'Example deal: a 3-year exclusive licence of a flagship drama series, priced on incremental subscriber economics against a minimum guarantee and revenue share.' }
+  },
+  saas: {
+    unit: { scale: 1, suffix: '', noun: 'enterprise customers' },
+    labels: { uplift: 'New enterprise customers', arpu: 'Monthly contract value', mg: 'Upfront build & data cost', rs: 'Partner / royalty share' },
+    ranges: { uplift: [40, 1000, 10, 220], arpu: [500, 8000, 100, 2400], mg: [1, 20, 0.5, 6] },
+    values: { churn: 1.4, margin: 78, rs: 4, mkt: 1.5, ovr: 0, dr: 11, term: 48, ramp: 6, mgup: 60, ops: 60 },
+    meta: { name: 'B2B data subscription', company: 'Example: automotive data & analytics provider', structure: 'Upfront fixed cost + royalty share',
+      desc: 'Appraisal of a proposed B2B data subscription product line: upfront platform and data acquisition cost recovered through recurring enterprise contracts, with royalties payable on licensed data.' }
+  },
+  app: {
+    unit: { scale: 1000, suffix: 'k', noun: 'active users' },
+    labels: { uplift: 'Gross user adds', arpu: 'Monthly revenue per user', mg: 'Partnership fixed fee', rs: 'Partner revenue share' },
+    ranges: { uplift: [200, 3000, 25, 950], arpu: [0.5, 6, 0.1, 1.7], mg: [1, 12, 0.5, 6] },
+    values: { churn: 6.0, margin: 65, rs: 15, mkt: 2.5, ovr: 0, dr: 12, term: 24, ramp: 2, mgup: 80, ops: 30 },
+    meta: { name: 'Consumer app partnership', company: 'Example: mobile games publisher', structure: 'Fixed fee + revenue share',
+      desc: 'Appraisal of a consumer app distribution partnership: fixed fee plus revenue share against incremental user monetisation over a 24-month window.' }
+  }
+};
+
+function applyTemplate(key) {
+  const t = TEMPLATES[key];
+  UNIT = t.unit;
+  for (const [k, [min, max, step, val]] of Object.entries(t.ranges)) {
+    const el = inputs[k]; el.min = min; el.max = max; el.step = step; el.value = val;
+  }
+  for (const [k, v] of Object.entries(t.values)) inputs[k].value = v;
+  for (const [k, txt] of Object.entries(t.labels)) $('lbl-' + k).textContent = txt;
+  $('s-name').value = t.meta.name; $('s-company').value = t.meta.company;
+  $('mast-desc').textContent = t.meta.desc; $('mast-structure').textContent = t.meta.structure;
+  document.querySelectorAll('.scn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.scn.bs').classList.add('active');
+  syncMeta();
+}
+function syncMeta() {
+  $('mast-name').textContent = $('s-name').value || 'Untitled deal';
+  $('mast-company').textContent = $('s-company').value || '—';
+  $('mast-term').textContent = inputs.term.value + ' months';
+}
+
+function readParams() {
+  return {
+    adds: +inputs.uplift.value * UNIT.scale,
+    churn: +inputs.churn.value / 100,
+    arpu: +inputs.arpu.value,
+    margin: +inputs.margin.value / 100,
+    mg: +inputs.mg.value * 1e6,
+    rs: +inputs.rs.value / 100,
+    mkt: +inputs.mkt.value * 1e6,
+    ovr: 1 + (+inputs.ovr.value / 100),
+    drAnnual: +inputs.dr.value / 100,
+    months: +inputs.term.value,
+    ramp: +inputs.ramp.value,
+    mgUp: +inputs.mgup.value / 100,
+    ops: +inputs.ops.value * 1000
+  };
+}
+function paintOutputs() {
+  $('o-uplift').textContent = (+inputs.uplift.value).toLocaleString() + UNIT.suffix;
+  $('o-churn').textContent = (+inputs.churn.value).toFixed(1) + '%';
+  $('o-arpu').textContent = CUR + (+inputs.arpu.value >= 100 ? (+inputs.arpu.value).toLocaleString() : (+inputs.arpu.value).toFixed(2));
+  $('o-margin').textContent = (+inputs.margin.value).toFixed(0) + '%';
+  $('o-mg').textContent = CUR + (+inputs.mg.value).toFixed(1) + 'M';
+  $('o-rs').textContent = (+inputs.rs.value).toFixed(0) + '%';
+  $('o-mkt').textContent = CUR + (+inputs.mkt.value).toFixed(2).replace(/0$/, '') + 'M';
+  $('o-ovr').textContent = (inputs.ovr.value >= 0 ? '+' : '') + inputs.ovr.value + '%';
+  $('o-dr').textContent = (+inputs.dr.value).toFixed(1) + '%';
+  $('o-term').textContent = inputs.term.value + ' mo';
+  $('o-ramp').textContent = inputs.ramp.value + ' mo';
+  $('o-mgup').textContent = inputs.mgup.value + '%';
+  $('o-ops').textContent = CUR + inputs.ops.value + 'k/mo';
+  $('v-hurdle').textContent = (+inputs.dr.value).toFixed(1) + '%';
+  syncMeta();
+}
+
+const SCENARIOS = { // relative to the current base inputs
+  downside: { addsMul: 0.65, churnPP: +1.2, ovrPP: +20 },
+  base:     { addsMul: 1.00, churnPP: 0,    ovrPP: 0 },
+  upside:   { addsMul: 1.30, churnPP: -0.7, ovrPP: -5 }
+};
+let scenarioBase = null; // captured when a scenario is applied
+
+/* ================= FORMATTING ================= */
+const fmtM = v => (v < 0 ? '−' + CUR : CUR) + Math.abs(v / 1e6).toFixed(1) + 'M';
+const fmtPct = v => (v * 100).toFixed(1) + '%';
+
+/* ================= CHARTS ================= */
+const css = getComputedStyle(document.documentElement);
+const C = { ink: css.getPropertyValue('--ink').trim(), soft: css.getPropertyValue('--ink-soft').trim(), pos: css.getPropertyValue('--pos').trim(), neg: css.getPropertyValue('--neg').trim(), line: css.getPropertyValue('--line').trim(), base: css.getPropertyValue('--base').trim() };
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = C.soft;
+
+let chWaterfall, chCash, chMC;
+
+function buildWaterfall(r) {
+  const haircut = r.pvRev - r.pvContrib;
+  const s1 = r.pvRev, s2 = s1 - haircut, s3 = s2 - r.pvRS, s4 = s3 - r.pvMG;
+  const steps = [
+    { label: 'Cohort revenue', from: 0, to: s1, color: C.pos },
+    { label: 'Variable costs', from: s1, to: s2, color: C.neg },
+    { label: 'Revenue share', from: s2, to: s3, color: C.neg },
+    { label: 'Minimum guarantee', from: s3, to: s4, color: C.neg },
+    { label: 'Marketing & ops', from: s4, to: r.npv, color: C.neg },
+    { label: 'Deal NPV', from: 0, to: r.npv, color: r.npv >= 0 ? C.ink : C.neg }
+  ];
+  const data = {
+    labels: steps.map(s => s.label),
+    datasets: [{ data: steps.map(s => [s.from / 1e6, s.to / 1e6]), backgroundColor: steps.map(s => s.color), borderRadius: 2, barPercentage: 0.72 }]
+  };
+  const opts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const [a, b] = ctx.raw; return (ctx.dataIndex === 0 || ctx.dataIndex === 5 ? '' : 'Δ ') + fmtM((b - a) * 1e6); } } } },
+    scales: { y: { title: { display: true, text: 'Present value, £M' }, grid: { color: C.line } }, x: { grid: { display: false }, ticks: { maxRotation: 30, minRotation: 0, autoSkip: false, font: { size: 10 } } } }
+  };
+  if (chWaterfall) { chWaterfall.data = data; chWaterfall.update(); }
+  else chWaterfall = new Chart($('ch-waterfall'), { type: 'bar', data, options: opts });
+}
+
+function buildCash(r) {
+  const labels = Array.from({ length: r.cumSeries.length }, (_, i) => i + 1);
+  const data = {
+    labels,
+    datasets: [{
+      data: r.cumSeries.map(v => v / 1e6), borderColor: C.ink, borderWidth: 2, pointRadius: 0, tension: 0.25, fill: { target: { value: 0 }, above: 'rgba(31,122,92,0.10)', below: 'rgba(178,58,46,0.10)' }
+    }]
+  };
+  const opts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { title: it => 'Month ' + it[0].label, label: ctx => 'Cumulative: ' + fmtM(ctx.raw * 1e6) } } },
+    scales: { y: { title: { display: true, text: 'Cumulative cash, £M' }, grid: { color: C.line } }, x: { title: { display: true, text: 'Month' }, grid: { display: false }, ticks: { maxTicksLimit: 12 } } }
+  };
+  if (chCash) { chCash.data = data; chCash.update(); }
+  else chCash = new Chart($('ch-cash'), { type: 'line', data, options: opts });
+}
+
+function buildMC(npvs) {
+  const BINS = 36;
+  const min = Math.min(...npvs), max = Math.max(...npvs);
+  const w = (max - min) / BINS || 1;
+  const counts = new Array(BINS).fill(0);
+  npvs.forEach(v => { counts[Math.min(BINS - 1, Math.floor((v - min) / w))]++; });
+  const centers = Array.from({ length: BINS }, (_, i) => min + (i + 0.5) * w);
+  const data = {
+    labels: centers.map(c => (c / 1e6).toFixed(1)),
+    datasets: [{ data: counts, backgroundColor: centers.map(c => c < 0 ? C.neg : C.pos), barPercentage: 1, categoryPercentage: 0.92 }]
+  };
+  const opts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { title: it => 'NPV ≈ £' + it[0].label + 'M', label: ctx => ctx.raw + ' of 4,000 iterations' } } },
+    scales: { y: { title: { display: true, text: 'Iterations' }, grid: { color: C.line } }, x: { title: { display: true, text: 'Simulated NPV, £M' }, grid: { display: false }, ticks: { maxTicksLimit: 10 } } }
+  };
+  if (chMC) { chMC.data = data; chMC.update(); }
+  else chMC = new Chart($('ch-mc'), { type: 'bar', data, options: opts });
+}
+
+/* ================= MONTE CARLO ================= */
+function triangular(lo, mode, hi) {
+  const u = Math.random(), f = (mode - lo) / (hi - lo);
+  return u < f ? lo + Math.sqrt(u * (hi - lo) * (mode - lo)) : hi - Math.sqrt((1 - u) * (hi - lo) * (hi - mode));
+}
+function normal(mu, sd) {
+  const u = 1 - Math.random(), v = Math.random();
+  return mu + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function runMonteCarlo(p, n = 4000) {
+  const npvs = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const q = Object.assign({}, p);
+    q.adds = triangular(p.adds * 0.55, p.adds, p.adds * 1.25);          // skewed to under-delivery
+    q.churn = Math.min(0.10, Math.max(0.005, normal(p.churn, 0.006))); // ±0.6pp sd
+    q.ovr = 1 + triangular(-0.10, p.ovr - 1, 0.35);                     // skewed to overrun
+    npvs[i] = runDeal(q).npv;
+  }
+  npvs.sort((a, b) => a - b);
+  const pct = q => npvs[Math.floor(q * (n - 1))];
+  return {
+    npvs,
+    p5: pct(0.05), p50: pct(0.50), p95: pct(0.95),
+    mean: npvs.reduce((s, v) => s + v, 0) / n,
+    probPos: npvs.filter(v => v > 0).length / n,
+    probBigLoss: npvs.filter(v => v < -5e6).length / n
+  };
+}
+
+
+/* ================= SENSITIVITY ================= */
+let chTornado;
+const TORNADO_VARS = [
+  { label: 'Gross adds ±25%',        adverse: p => ({...p, adds: p.adds*0.75}),                         favourable: p => ({...p, adds: p.adds*1.25}) },
+  { label: 'Churn ±1.0pp',           adverse: p => ({...p, churn: Math.min(0.15,p.churn+0.01)}),        favourable: p => ({...p, churn: Math.max(0.005,p.churn-0.01)}) },
+  { label: 'Contribution margin ±5pp', adverse: p => ({...p, margin: p.margin-0.05}),                   favourable: p => ({...p, margin: p.margin+0.05}) },
+  { label: 'ARPU ±10%',              adverse: p => ({...p, arpu: p.arpu*0.90}),                          favourable: p => ({...p, arpu: p.arpu*1.10}) },
+  { label: 'Minimum guarantee ±15%', adverse: p => ({...p, mg: p.mg*1.15}),                              favourable: p => ({...p, mg: p.mg*0.85}) },
+  { label: 'Revenue share ±3pp',     adverse: p => ({...p, rs: p.rs+0.03}),                              favourable: p => ({...p, rs: Math.max(0,p.rs-0.03)}) },
+  { label: 'Delivery costs +20/−10%',adverse: p => ({...p, ovr: p.ovr+0.20}),                            favourable: p => ({...p, ovr: p.ovr-0.10}) },
+  { label: 'Discount rate ±2pp',     adverse: p => ({...p, drAnnual: p.drAnnual+0.02}),                  favourable: p => ({...p, drAnnual: Math.max(0.01,p.drAnnual-0.02)}) }
+];
+
+function buildTornado(p, baseNPV) {
+  const rows = TORNADO_VARS.map(v => {
+    const lo = runDeal(v.adverse(p)).npv, hi = runDeal(v.favourable(p)).npv;
+    return { label: v.label, lo, hi, span: Math.abs(hi - lo) };
+  }).sort((a, b) => b.span - a.span);
+
+  const data = {
+    labels: rows.map(r => r.label),
+    datasets: [
+      { label: 'Adverse',    data: rows.map(r => [Math.min(r.lo, baseNPV)/1e6, baseNPV/1e6]), backgroundColor: C.neg, grouped: false, barPercentage: 0.6, borderRadius: 1 },
+      { label: 'Favourable', data: rows.map(r => [baseNPV/1e6, Math.max(r.hi, baseNPV)/1e6]), backgroundColor: C.pos, grouped: false, barPercentage: 0.6, borderRadius: 1 }
+    ]
+  };
+  const opts = {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10 } },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ' end: ' + fmtM(ctx.raw[ctx.datasetIndex === 0 ? 0 : 1] * 1e6) } } },
+    scales: { x: { title: { display: true, text: 'NPV, £M' }, grid: { color: C.line } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
+  };
+  if (chTornado) { chTornado.data = data; chTornado.update(); }
+  else chTornado = new Chart($('ch-tornado'), { type: 'bar', data, options: opts });
+  return rows;
+}
+
+function bisect(fn, lo, hi) {
+  let flo = fn(lo), fhi = fn(hi);
+  if (flo * fhi > 0) return null;
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; (fn(lo) * fn(mid) <= 0) ? hi = mid : lo = mid; }
+  return (lo + hi) / 2;
+}
+
+function computeBreakevens(p) {
+  const beAdds  = bisect(a => runDeal({...p, adds: a}).npv, p.adds * 0.02, p.adds * 8);
+  const beChurn = bisect(c => runDeal({...p, churn: c}).npv, 0.003, 0.15);
+  const beMG    = bisect(m => runDeal({...p, mg: m}).npv, 0, p.mg * 6 + 1e6);
+  $('be-adds').textContent  = beAdds  === null ? 'n/a' : Math.round(beAdds/UNIT.scale).toLocaleString() + UNIT.suffix;
+  $('be-churn').textContent = beChurn === null ? 'n/a' : (beChurn*100).toFixed(1) + '%/mo';
+  $('be-mg').textContent    = beMG    === null ? 'n/a' : fmtM(beMG);
+  if (beAdds !== null) {
+    const hr = (p.adds - beAdds) / p.adds * 100;
+    $('be-adds-sub').textContent = hr >= 0
+      ? 'Current plan of ' + Math.round(p.adds/UNIT.scale).toLocaleString() + UNIT.suffix + ' gives ' + hr.toFixed(0) + '% headroom before value destruction'
+      : 'Current plan of ' + Math.round(p.adds/UNIT.scale).toLocaleString() + UNIT.suffix + ' is ' + Math.abs(hr).toFixed(0) + '% below break-even';
+  } else { $('be-adds-sub').textContent = 'NPV does not cross zero within tested range at current terms'; }
+  if (beChurn !== null) {
+    const gap = (beChurn - p.churn) * 100;
+    $('be-churn-sub').textContent = gap >= 0
+      ? 'Current assumption ' + (p.churn*100).toFixed(1) + '% leaves ' + gap.toFixed(1) + 'pp of tolerance'
+      : 'Current assumption exceeds break-even by ' + Math.abs(gap).toFixed(1) + 'pp';
+  } else { $('be-churn-sub').textContent = 'NPV does not cross zero within tested range at current terms'; }
+  return { beAdds, beChurn, beMG };
+}
+
+function paintScenarioTable(pNow) {
+  const cells = { downside: 'd', base: 'b', upside: 'u' };
+  const b = scenarioBase || { uplift: +inputs.uplift.value, churn: +inputs.churn.value, ovr: +inputs.ovr.value };
+  for (const [name, sfx] of Object.entries(cells)) {
+    const sc = SCENARIOS[name];
+    const q = {...pNow, adds: b.uplift * sc.addsMul * UNIT.scale, churn: (b.churn + sc.churnPP)/100, ovr: 1 + (b.ovr + sc.ovrPP)/100};
+    const r = runDeal(q);
+    const i = irrAnnual(r.netCFs);
+    const npvCell = $('st-npv-' + sfx);
+    npvCell.textContent = fmtM(r.npv);
+    npvCell.className = r.npv >= 0 ? 'pos' : 'neg';
+    $('st-irr-' + sfx).textContent = i === null ? 'n/a' : fmtPct(i);
+    $('st-pb-' + sfx).textContent = r.payback ? 'm' + r.payback : '>' + pNow.months + 'm';
+  }
+}
+
+/* ================= ORCHESTRATION ================= */
+let latest = {}; // stash for memo
+function recalc() {
+  paintOutputs();
+  const p = readParams();
+  const r = runDeal(p);
+  const irr = irrAnnual(r.netCFs);
+  const mc = runMonteCarlo(p);
+
+  $('v-npv').textContent = fmtM(r.npv);
+  $('kpi-npv').className = 'kpi ' + (r.npv >= 0 ? 'good' : 'bad');
+  $('v-irr').textContent = irr === null ? 'n/a' : fmtPct(irr);
+  $('kpi-irr').className = 'kpi ' + (irr !== null && irr > p.drAnnual ? 'good' : 'bad');
+  $('v-pb').textContent = r.payback ? 'Month ' + r.payback : '>' + p.months + ' mo';
+  $('kpi-pb').className = 'kpi ' + (r.payback && r.payback <= 24 ? 'good' : (r.payback ? '' : 'bad'));
+  $('v-prob').textContent = (mc.probPos * 100).toFixed(0) + '%';
+  $('kpi-prob').className = 'kpi ' + (mc.probPos >= 0.7 ? 'good' : mc.probPos < 0.5 ? 'bad' : '');
+
+  $('mc-p5').textContent = fmtM(mc.p5);
+  $('mc-p50').textContent = fmtM(mc.p50);
+  $('mc-p95').textContent = fmtM(mc.p95);
+  $('mc-mean').textContent = fmtM(mc.mean);
+  $('mc-tail').textContent = (mc.probBigLoss * 100).toFixed(1) + '%';
+
+  buildWaterfall(r); buildCash(r); buildMC(mc.npvs);
+  const tornado = buildTornado(p, r.npv);
+  const be = computeBreakevens(p);
+  paintScenarioTable(p);
+  latest = { p, r, irr, mc, tornado, be };
+}
+
+let t;
+Object.values(inputs).forEach(el => el.addEventListener('input', () => {
+  document.querySelectorAll('.scn').forEach(b => b.classList.remove('active'));
+  scenarioBase = null;
+  clearTimeout(t); t = setTimeout(recalc, 60);
+}));
+
+document.querySelectorAll('.scn').forEach(btn => btn.addEventListener('click', () => {
+  if (!scenarioBase) scenarioBase = { uplift: +inputs.uplift.value, churn: +inputs.churn.value, ovr: +inputs.ovr.value };
+  const sc = SCENARIOS[btn.dataset.scn];
+  inputs.uplift.value = Math.round(scenarioBase.uplift * sc.addsMul);
+  inputs.churn.value = Math.max(+inputs.churn.min, Math.min(+inputs.churn.max, +(scenarioBase.churn + sc.churnPP).toFixed(1)));
+  inputs.ovr.value = Math.max(+inputs.ovr.min, Math.min(+inputs.ovr.max, scenarioBase.ovr + sc.ovrPP));
+  document.querySelectorAll('.scn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  recalc();
+}));
+
+/* ================= MEMO ================= */
+function memoFacts() {
+  const { p, r, irr, mc } = latest;
+  const tmeta = TEMPLATES[$('s-template').value].meta;
+  return {
+    deal: `${$('s-name').value} — ${p.months}-month deal appraised for ${$('s-company').value.trim()}. ${tmeta.structure}`,
+    structure: `Fixed commitment ${CUR}${(p.mg/1e6).toFixed(1)}M (${(p.mgUp*100).toFixed(0)}% at signing, remainder at annual milestones) plus ${(p.rs*100).toFixed(0)}% revenue share on cohort revenue`,
+    assumptions: `Gross adds ${(p.adds/UNIT.scale).toLocaleString()}${UNIT.suffix} ${UNIT.noun} phased over a ${p.ramp}-month ramp; cohort churn ${(p.churn*100).toFixed(1)}%/month; price ${CUR}${p.arpu>=100?p.arpu.toLocaleString():p.arpu.toFixed(2)}/month scored at ${(p.margin*100).toFixed(0)}% contribution margin; launch marketing ${CUR}${(p.mkt/1e6).toFixed(2)}M; running ops ${CUR}${(p.ops/1000).toFixed(0)}k/month; delivery cost variance ${((p.ovr-1)*100).toFixed(0)}%; hurdle rate ${(p.drAnnual*100).toFixed(1)}%`,
+    results: `NPV ${fmtM(r.npv)}; IRR ${irr===null?'not meaningful':fmtPct(irr)}; payback ${r.payback?('month '+r.payback):'beyond 36 months'}`,
+    risk: `Monte Carlo (4,000 iterations): P(NPV>0) ${(mc.probPos*100).toFixed(0)}%; median ${fmtM(mc.p50)}; P5 ${fmtM(mc.p5)}; P95 ${fmtM(mc.p95)}; probability of loss exceeding £5M ${(mc.probBigLoss*100).toFixed(1)}%`,
+    sensitivity: `Top NPV driver: ${latest.tornado[0].label}. Break-evens at current terms: gross adds ${latest.be.beAdds?Math.round(latest.be.beAdds/UNIT.scale).toLocaleString()+UNIT.suffix:'n/a'}; cohort churn ${latest.be.beChurn?(latest.be.beChurn*100).toFixed(1)+'%/month':'n/a'}; maximum supportable MG ${latest.be.beMG?fmtM(latest.be.beMG):'n/a'}`
+  };
+}
+
+function fallbackMemo(f) {
+  const { r, mc, irr, p } = latest;
+  const rec = r.npv > 0 && mc.probPos >= 0.65 && r.payback ? "APPROVE" : (r.npv > 0 ? "APPROVE WITH CONDITIONS" : "DECLINE AT CURRENT TERMS");
+  return `RECOMMENDATION: ${rec}
+
+${f.deal}. ${f.structure}.
+
+FINANCIALS. The deal returns ${f.results.toLowerCase()} against a ${(p.drAnnual*100).toFixed(1)}% hurdle. Value is driven by the acquired cohort's revenue over the exclusive window, net of revenue share and the fixed MG; the cash profile is J-curve shaped given the 50% MG payment at signing.
+
+RISK. ${f.risk}. The distribution is asymmetric: adds are skewed to under-delivery and delivery costs to overrun, consistent with historical content deal outcomes.
+
+KEY SENSITIVITIES. ${f.sensitivity}. The appraisal is most exposed to gross adds materially below plan and cohort churn above assumption, which compress lifetime revenue; the fixed MG caps contractual cost exposure.
+
+CONDITIONS. Committee should require a marketing gate review at month 3 against actual adds, and pre-agree a downside action plan if the cohort tracks below the P25 path.`;
+}
+
+$('btn-memo').addEventListener('click', async () => {
+  const btn = $('btn-memo'), status = $('memo-status'), box = $('memo-box'), body = $('memo-body');
+  btn.disabled = true; status.textContent = 'Drafting memo from live figures…';
+  const f = memoFacts();
+  $('memo-head-line').textContent = $('s-company').value + ' · ' + $('s-name').value + ' — pre-read';
+  const prompt = `You are a senior commercial finance analyst writing an investment committee pre-read memo for the deal described below. Write in terse, driver-led board-pack register (UK English): recommendation first, then financials, risk, key sensitivities, and conditions. No pleasantries, no markdown formatting, no bullets symbols other than numbered points, under 280 words. Use only these facts, do not invent figures:
+DEAL: ${f.deal}
+STRUCTURE: ${f.structure}
+ASSUMPTIONS: ${f.assumptions}
+RESULTS: ${f.results}
+SIMULATION: ${f.risk}
+SENSITIVITY: ${f.sensitivity}
+Start with "RECOMMENDATION:" followed by APPROVE, APPROVE WITH CONDITIONS, or DECLINE AT CURRENT TERMS — choose based on the numbers.`;
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
+    });
+    if (!resp.ok) throw new Error('API ' + resp.status);
+    const data = await resp.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    if (!text) throw new Error('empty');
+    body.textContent = text;
+    status.textContent = 'Memo drafted by Claude from the current model state.';
+  } catch (e) {
+    body.textContent = fallbackMemo(f);
+    status.textContent = 'Live AI drafting unavailable here — showing the model-generated memo from the same figures.';
+  }
+  box.classList.add('show');
+  btn.disabled = false;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+/* ================= SETUP PANEL EVENTS ================= */
+$('s-template').addEventListener('change', e => { applyTemplate(e.target.value); scenarioBase = null; recalc(); });
+$('s-name').addEventListener('input', syncMeta);
+$('s-company').addEventListener('input', syncMeta);
+$('s-currency').addEventListener('change', e => { CUR = e.target.value; recalc(); });
+
+/* ================= EXPORT / IMPORT ================= */
+$('btn-export').addEventListener('click', () => {
+  const payload = {
+    _type: 'deal-risk-simulator', version: 3,
+    template: $('s-template').value,
+    currency: CUR,
+    meta: { name: $('s-name').value, company: $('s-company').value },
+    values: Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, +el.value])),
+    ranges: Object.fromEntries(['uplift','arpu','mg'].map(k => [k, { min: +inputs[k].min, max: +inputs[k].max, step: +inputs[k].step }]))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = ($('s-name').value || 'deal').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$('btn-import').addEventListener('click', () => $('file-import').click());
+$('file-import').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (d._type !== 'deal-risk-simulator') throw new Error('not a deal file');
+      if (TEMPLATES[d.template]) { $('s-template').value = d.template; applyTemplate(d.template); }
+      if (d.ranges) for (const [k, r] of Object.entries(d.ranges)) { inputs[k].min = r.min; inputs[k].max = r.max; inputs[k].step = r.step; }
+      if (d.values) for (const [k, v] of Object.entries(d.values)) if (inputs[k] !== undefined) inputs[k].value = v;
+      if (d.meta) { $('s-name').value = d.meta.name || ''; $('s-company').value = d.meta.company || ''; }
+      if (d.currency) { CUR = d.currency; $('s-currency').value = d.currency; }
+      scenarioBase = null;
+      recalc();
+    } catch (err) {
+      alert('Could not read that file — it needs to be a JSON exported from this simulator.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+/* ================= INIT ================= */
+recalc();
+</script>
+</body>
+</html>
