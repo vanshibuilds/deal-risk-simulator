@@ -6,6 +6,7 @@ commercial investment contracts and quantify down-tail risk.
 
 
 🔗 [**Live Interactive Demo**](https://vanshibuilds.github.io/deal-risk-simulator/)
+🔗 [**Methodology**](https://vanshibuilds.github.io/methodology.md/)
 
 ## 🚀 Key Architectural Features
 * **Asymmetric Monte Carlo Engine:** Runs 4,000 parallel iterations utilizing skewed triangular and normal distributions to isolate value-destructive risks.
