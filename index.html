@@ -110,6 +110,29 @@
   .scntable td.pos{color:var(--pos)} .scntable td.neg{color:var(--neg)}
   .scntable thead th.dn{color:var(--neg)} .scntable thead th.up{color:var(--pos)} .scntable thead th.bs{color:var(--base)}
 
+  /* ---------- unit economics ---------- */
+  .chip{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-top:8px}
+  .chip.good{background:var(--pos-soft);color:var(--pos)}
+  .chip.warn{background:var(--base-soft);color:var(--base)}
+  .chip.bad{background:var(--neg-soft);color:var(--neg)}
+  .ue-note{margin-top:14px;font-size:13px;color:var(--ink-soft);background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--base);border-radius:3px;padding:12px 16px}
+  .bench-src{font-size:11px;color:var(--ink-soft);margin-top:8px;font-style:italic}
+
+  /* ---------- compare ---------- */
+  .pinbar{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+  .compare{margin-top:14px;display:none}
+  .compare.show{display:block}
+  .cmp-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--ink);font-size:13px}
+  .cmp-table th,.cmp-table td{padding:9px 14px;text-align:right;border-bottom:1px solid var(--line)}
+  .cmp-table th:first-child,.cmp-table td:first-child{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+  .cmp-table thead th{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid var(--ink)}
+  .cmp-table td{font-family:var(--mono);font-weight:500}
+  .cmp-table td.pos{color:var(--pos)} .cmp-table td.neg{color:var(--neg)}
+
+  /* ---------- mc toggle ---------- */
+  .mc-toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);margin-bottom:12px}
+  .mc-toggle input{accent-color:var(--ink);width:15px;height:15px;cursor:pointer}
+
   /* ---------- breakevens ---------- */
   .breakevens{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
   .be{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--base);border-radius:3px;padding:14px 18px}
@@ -274,11 +297,41 @@
         <tr><td>Payback</td><td id="st-pb-d">—</td><td id="st-pb-b">—</td><td id="st-pb-u">—</td></tr>
       </tbody>
     </table>
+    <div class="pinbar">
+      <button class="btn ghost sm" id="btn-pin">Pin current deal as A</button>
+      <button class="btn ghost sm" id="btn-unpin" style="display:none">Clear comparison</button>
+      <span class="memo-status">Pin a configuration, change anything — templates, terms, assumptions — and compare head-to-head.</span>
+    </div>
+    <div class="compare" id="cmp-box">
+      <table class="cmp-table" aria-label="Deal comparison">
+        <thead><tr><th>Head-to-head</th><th id="cmp-name-a">Deal A</th><th>Current deal</th><th>Δ</th></tr></thead>
+        <tbody>
+          <tr><td>NPV</td><td id="ca-npv">—</td><td id="cb-npv">—</td><td id="cd-npv">—</td></tr>
+          <tr><td>IRR</td><td id="ca-irr">—</td><td id="cb-irr">—</td><td id="cd-irr">—</td></tr>
+          <tr><td>Payback</td><td id="ca-pb">—</td><td id="cb-pb">—</td><td id="cd-pb">—</td></tr>
+          <tr><td>P(NPV&gt;0)</td><td id="ca-prob">—</td><td id="cb-prob">—</td><td id="cd-prob">—</td></tr>
+          <tr><td>LTV:CAC</td><td id="ca-ltv">—</td><td id="cb-ltv">—</td><td id="cd-ltv">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ UNIT ECONOMICS ============ -->
+  <section id="unitecon">
+    <div class="sechead"><span class="no">03</span><h2>Unit economics vs sector benchmarks</h2><span class="hint">Per-unit view · illustrative sector ranges</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k-lbl">CAC</div><div class="k-val" id="ue-cac">—</div><div class="k-sub">Acquisition spend per gross add</div><span class="chip" id="chip-cac">—</span></div>
+      <div class="kpi"><div class="k-lbl">LTV</div><div class="k-val" id="ue-ltv">—</div><div class="k-sub">Contribution per unit over expected life, net of revenue share</div><span class="chip" id="chip-churn">—</span></div>
+      <div class="kpi"><div class="k-lbl">LTV : CAC</div><div class="k-val" id="ue-ratio">—</div><div class="k-sub">Value created per unit of acquisition spend</div><span class="chip" id="chip-ratio">—</span></div>
+      <div class="kpi"><div class="k-lbl">CAC payback</div><div class="k-val" id="ue-pb">—</div><div class="k-sub">Months of unit contribution to recover CAC</div><span class="chip" id="chip-pb">—</span></div>
+    </div>
+    <div class="ue-note" id="ue-note">—</div>
+    <div class="bench-src">Benchmark ranges are illustrative sector heuristics for demonstration; a production version would source these from market data.</div>
   </section>
 
   <!-- ============ BRIDGE + CASH ============ -->
   <section id="bridge">
-    <div class="sechead"><span class="no">03</span><h2>Value bridge &amp; cash profile</h2></div>
+    <div class="sechead"><span class="no">04</span><h2>Value bridge &amp; cash profile</h2></div>
     <div class="two-col">
       <div class="chartcard">
         <h3>NPV bridge — where the value comes from</h3>
@@ -295,7 +348,8 @@
 
   <!-- ============ MONTE CARLO ============ -->
   <section id="risk">
-    <div class="sechead"><span class="no">04</span><h2>Risk simulation</h2><span class="hint">4,000 iterations · uncertainty on adds, churn &amp; cost variance</span></div>
+    <div class="sechead"><span class="no">05</span><h2>Risk simulation</h2><span class="hint">4,000 iterations · uncertainty on adds, churn &amp; cost variance</span></div>
+    <label class="mc-toggle"><input type="checkbox" id="mc-corr" checked> Correlate execution risk — a weak launch misses on adds <em>and</em> overruns on cost (ρ = 0.6)</label>
     <div class="chartcard">
       <h3>Distribution of NPV outcomes</h3>
       <div class="ch-sub">Each bar is a bucket of simulated outcomes — red mass is value destruction</div>
@@ -312,7 +366,7 @@
 
   <!-- ============ SENSITIVITY ============ -->
   <section id="sens">
-    <div class="sechead"><span class="no">05</span><h2>Sensitivity &amp; break-evens</h2><span class="hint">One-way swings on NPV · where the deal stops working</span></div>
+    <div class="sechead"><span class="no">06</span><h2>Sensitivity &amp; break-evens</h2><span class="hint">One-way swings on NPV · where the deal stops working</span></div>
     <div class="chartcard">
       <h3>Tornado — what moves the answer</h3>
       <div class="ch-sub">NPV at adverse and favourable ends of each driver, others held at current values</div>
@@ -327,7 +381,7 @@
 
   <!-- ============ MEMO ============ -->
   <section id="memo-sec">
-    <div class="sechead"><span class="no">06</span><h2>Committee memo</h2><span class="hint">Generated from the live numbers, in board-pack register</span></div>
+    <div class="sechead"><span class="no">07</span><h2>Committee memo</h2><span class="hint">Generated from the live numbers, in board-pack register</span></div>
     <div class="memo-actions">
       <button class="btn" id="btn-memo">Generate deal memo</button>
       <span class="memo-status" id="memo-status">Uses the current assumptions and simulation results.</span>
@@ -339,14 +393,15 @@
 
   <!-- ============ METHODOLOGY ============ -->
   <section id="method">
-    <div class="sechead"><span class="no">07</span><h2>Methodology notes</h2></div>
+    <div class="sechead"><span class="no">08</span><h2>Methodology notes</h2></div>
     <div class="method">
       <p><b>Generality.</b> The engine appraises any recurring-revenue deal that fits the shape: an acquired cohort of units (subscribers, customers, users) paying a monthly price, decaying at a churn rate, against a fixed commitment, a revenue share and launch costs. Templates re-range the inputs for streaming licences, B2B subscriptions and app partnerships; term, ramp, payment schedule and currency are all configurable, and any deal can be exported to a JSON file and re-imported later.</p>
       <p><b>Revenue build.</b> Gross adds phase in front-weighted across the configurable launch ramp and the cohort decays at the monthly churn rate; revenue is cohort size × ARPU per month over the deal term, scored at contribution margin — net of payment processing, delivery and shared content costs — rather than gross revenue. Only incremental economics are scored — the base business is deliberately excluded so the deal stands on its own.</p>
       <p><b>Cost build.</b> The fixed commitment is paid at signing per the configurable upfront percentage, with the remainder split equally across annual milestones inside the term. Revenue share accrues monthly on cohort revenue. Marketing is weighted to launch; localisation &amp; ops run monthly. The delivery cost variance lever stresses the controllable cost base only, since the MG cannot overrun.</p>
       <p><b>Appraisal.</b> NPV discounts monthly net cash flows at the annual hurdle rate converted to a monthly equivalent. IRR is solved by bisection on monthly flows and annualised. Payback is the first month cumulative undiscounted cash turns positive.</p>
+      <p><b>Unit economics.</b> CAC is acquisition marketing per gross add; LTV is monthly contribution per unit net of revenue share, multiplied by expected paying months within the term, (1−(1−c)^T)/c. LTV:CAC and CAC payback are benchmarked against illustrative sector ranges. The fixed commitment is deliberately excluded from CAC — it is the cost of the asset, not of acquisition — which is why healthy unit economics can coexist with a marginal NPV.</p>
       <p><b>Sensitivity.</b> The tornado flexes one driver at a time between an adverse and favourable bound (e.g. adds ±25%, churn ±1pp, margin ±5pp) with all others held constant, ranking drivers by NPV swing. Break-evens are solved by bisection: the gross adds, churn rate and minimum guarantee at which NPV crosses zero, holding all other terms.</p>
-      <p><b>Simulation.</b> Each iteration draws gross adds from a triangular distribution (skewed to under-delivery), churn from a clamped normal around the input, and cost variance from a triangular distribution skewed to overrun — reflecting the empirical asymmetry of content deals. 4,000 iterations produce the NPV distribution, percentiles and probability of value creation.</p>
+      <p><b>Simulation.</b> Each iteration draws gross adds from a triangular distribution (skewed to under-delivery), churn from a clamped normal around the input, and cost variance from a triangular distribution skewed to overrun — reflecting the empirical asymmetry of content deals. By default the draws are correlated through a shared launch-quality factor (ρ = 0.6 between adds shortfall and cost overrun, ρ = 0.3 with churn) — a weak launch tends to miss on volume, overrun on cost and churn faster together, and independent draws would understate tail risk. The toggle allows comparison against independent sampling. 4,000 iterations produce the NPV distribution, percentiles and probability of value creation.</p>
     </div>
   </section>
 
@@ -587,21 +642,39 @@ function buildMC(npvs) {
 }
 
 /* ================= MONTE CARLO ================= */
-function triangular(lo, mode, hi) {
-  const u = Math.random(), f = (mode - lo) / (hi - lo);
+function triangular(lo, mode, hi, u) {
+  if (u === undefined) u = Math.random();
+  const f = (mode - lo) / (hi - lo);
   return u < f ? lo + Math.sqrt(u * (hi - lo) * (mode - lo)) : hi - Math.sqrt((1 - u) * (hi - lo) * (hi - mode));
 }
-function normal(mu, sd) {
+function stdNormal() {
   const u = 1 - Math.random(), v = Math.random();
-  return mu + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function normCDF(x) { // Abramowitz–Stegun approximation
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp(-x * x / 2);
+  const pr = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - pr : pr;
 }
 function runMonteCarlo(p, n = 4000) {
+  const correlated = $('mc-corr') && $('mc-corr').checked;
+  const RHO = 0.6, RHO_CHURN = 0.3; // execution-quality correlations
   const npvs = new Array(n);
   for (let i = 0; i < n; i++) {
     const q = Object.assign({}, p);
-    q.adds = triangular(p.adds * 0.55, p.adds, p.adds * 1.25);          // skewed to under-delivery
-    q.churn = Math.min(0.10, Math.max(0.005, normal(p.churn, 0.006))); // ±0.6pp sd
-    q.ovr = 1 + triangular(-0.10, p.ovr - 1, 0.35);                     // skewed to overrun
+    const z1 = stdNormal(), z2 = stdNormal(), z3 = stdNormal(); // z1 = launch quality
+    let uAdds, uCost, zChurn;
+    if (correlated) {
+      uAdds = normCDF(z1);
+      uCost = normCDF(-RHO * z1 + Math.sqrt(1 - RHO * RHO) * z2); // weak launch (low z1) -> high cost draw
+      zChurn = -RHO_CHURN * z1 + Math.sqrt(1 - RHO_CHURN * RHO_CHURN) * z3; // weak launch -> higher churn
+    } else {
+      uAdds = normCDF(z1); uCost = normCDF(z2); zChurn = z3;
+    }
+    q.adds = triangular(p.adds * 0.55, p.adds, p.adds * 1.25, uAdds);   // skewed to under-delivery
+    q.churn = Math.min(0.15, Math.max(0.005, p.churn + 0.006 * zChurn)); // ±0.6pp sd
+    q.ovr = 1 + triangular(-0.10, p.ovr - 1, 0.35, uCost);              // skewed to overrun
     npvs[i] = runDeal(q).npv;
   }
   npvs.sort((a, b) => a - b);
@@ -615,6 +688,52 @@ function runMonteCarlo(p, n = 4000) {
   };
 }
 
+
+
+/* ================= UNIT ECONOMICS & BENCHMARKS ================= */
+const BENCHMARKS = {
+  content: { churn: [2.0, 4.0], ratioGood: 3, ratioWarn: 2, pbGood: 12, pbWarn: 18, label: 'streaming' },
+  saas:    { churn: [0.8, 2.0], ratioGood: 3, ratioWarn: 2, pbGood: 18, pbWarn: 24, label: 'B2B SaaS' },
+  app:     { churn: [4.0, 9.0], ratioGood: 2.5, ratioWarn: 1.5, pbGood: 9,  pbWarn: 14, label: 'consumer apps' }
+};
+function chip(el, cls, txt) { el.className = 'chip ' + cls; el.textContent = txt; }
+
+function unitEconomics(p) {
+  const bench = BENCHMARKS[$('s-template').value];
+  const life = (1 - Math.pow(1 - p.churn, p.months)) / p.churn; // expected paying months within term
+  const unitNet = p.arpu * (p.margin - p.rs); // monthly contribution per unit, net of rev share
+  const cac = (p.mkt * p.ovr) / p.adds;
+  const ltv = unitNet * life;
+  const ratio = ltv / cac;
+  const cacPB = cac / unitNet;
+  const fullyLoaded = (p.mkt * p.ovr + p.mg + p.ops * p.ovr * p.months) / p.adds;
+
+  const money = v => CUR + (v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(2));
+  $('ue-cac').textContent = money(cac);
+  $('ue-ltv').textContent = money(ltv);
+  $('ue-ratio').textContent = ratio.toFixed(1) + 'x';
+  $('ue-pb').textContent = cacPB.toFixed(1) + ' mo';
+
+  const c = p.churn * 100;
+  if (c <= bench.churn[1] && c >= bench.churn[0]) chip($('chip-churn'), 'good', 'churn in ' + bench.label + ' range ' + bench.churn[0] + '–' + bench.churn[1] + '%');
+  else if (c < bench.churn[0]) chip($('chip-churn'), 'warn', 'churn below ' + bench.label + ' range — optimistic');
+  else if (c <= bench.churn[1] + 1) chip($('chip-churn'), 'warn', 'churn above ' + bench.label + ' range');
+  else chip($('chip-churn'), 'bad', 'churn well above ' + bench.label + ' range');
+
+  if (ratio >= bench.ratioGood) chip($('chip-ratio'), 'good', '≥ ' + bench.ratioGood + 'x healthy threshold');
+  else if (ratio >= bench.ratioWarn) chip($('chip-ratio'), 'warn', 'below ' + bench.ratioGood + 'x healthy threshold');
+  else chip($('chip-ratio'), 'bad', 'value-destructive acquisition');
+
+  if (cacPB <= bench.pbGood) chip($('chip-pb'), 'good', '≤ ' + bench.pbGood + ' mo ' + bench.label + ' norm');
+  else if (cacPB <= bench.pbWarn) chip($('chip-pb'), 'warn', 'slower than ' + bench.pbGood + ' mo norm');
+  else chip($('chip-pb'), 'bad', 'well beyond ' + bench.pbWarn + ' mo');
+
+  chip($('chip-cac'), 'good', 'marketing-only basis');
+
+  const npvNow = latest.r ? latest.r.npv : null;
+  $('ue-note').innerHTML = '<b>Read this panel against the verdict.</b> Unit economics can be healthy while the deal is marginal: acquisition spend recovers ' + ratio.toFixed(1) + 'x, but the fixed commitment adds ' + CUR + (p.mg / p.adds >= 1000 ? Math.round(p.mg / p.adds).toLocaleString() : (p.mg / p.adds).toFixed(2)) + ' per unit of fully-loaded cost (' + money(fullyLoaded) + ' all-in vs ' + money(ltv) + ' LTV). Strong LTV:CAC says the <em>marketing</em> works; only NPV says the <em>deal</em> works.';
+  return { cac, ltv, ratio, cacPB, life };
+}
 
 /* ================= SENSITIVITY ================= */
 let chTornado;
@@ -727,6 +846,8 @@ function recalc() {
   const be = computeBreakevens(p);
   paintScenarioTable(p);
   latest = { p, r, irr, mc, tornado, be };
+  latest.ue = unitEconomics(p);
+  paintCompare();
 }
 
 let t;
@@ -757,6 +878,7 @@ function memoFacts() {
     assumptions: `Gross adds ${(p.adds/UNIT.scale).toLocaleString()}${UNIT.suffix} ${UNIT.noun} phased over a ${p.ramp}-month ramp; cohort churn ${(p.churn*100).toFixed(1)}%/month; price ${CUR}${p.arpu>=100?p.arpu.toLocaleString():p.arpu.toFixed(2)}/month scored at ${(p.margin*100).toFixed(0)}% contribution margin; launch marketing ${CUR}${(p.mkt/1e6).toFixed(2)}M; running ops ${CUR}${(p.ops/1000).toFixed(0)}k/month; delivery cost variance ${((p.ovr-1)*100).toFixed(0)}%; hurdle rate ${(p.drAnnual*100).toFixed(1)}%`,
     results: `NPV ${fmtM(r.npv)}; IRR ${irr===null?'not meaningful':fmtPct(irr)}; payback ${r.payback?('month '+r.payback):'beyond 36 months'}`,
     risk: `Monte Carlo (4,000 iterations): P(NPV>0) ${(mc.probPos*100).toFixed(0)}%; median ${fmtM(mc.p50)}; P5 ${fmtM(mc.p5)}; P95 ${fmtM(mc.p95)}; probability of loss exceeding £5M ${(mc.probBigLoss*100).toFixed(1)}%`,
+    uniteconomics: `CAC ${CUR}${latest.ue.cac>=1000?Math.round(latest.ue.cac).toLocaleString():latest.ue.cac.toFixed(2)}; LTV ${CUR}${latest.ue.ltv>=1000?Math.round(latest.ue.ltv).toLocaleString():latest.ue.ltv.toFixed(2)}; LTV:CAC ${latest.ue.ratio.toFixed(1)}x; CAC payback ${latest.ue.cacPB.toFixed(1)} months. Note: unit economics reflect acquisition efficiency only; the fixed commitment sits outside CAC and is captured in NPV`,
     sensitivity: `Top NPV driver: ${latest.tornado[0].label}. Break-evens at current terms: gross adds ${latest.be.beAdds?Math.round(latest.be.beAdds/UNIT.scale).toLocaleString()+UNIT.suffix:'n/a'}; cohort churn ${latest.be.beChurn?(latest.be.beChurn*100).toFixed(1)+'%/month':'n/a'}; maximum supportable MG ${latest.be.beMG?fmtM(latest.be.beMG):'n/a'}`
   };
 }
@@ -788,6 +910,7 @@ STRUCTURE: ${f.structure}
 ASSUMPTIONS: ${f.assumptions}
 RESULTS: ${f.results}
 SIMULATION: ${f.risk}
+UNIT ECONOMICS: ${f.uniteconomics}
 SENSITIVITY: ${f.sensitivity}
 Start with "RECOMMENDATION:" followed by APPROVE, APPROVE WITH CONDITIONS, or DECLINE AT CURRENT TERMS — choose based on the numbers.`;
   try {
@@ -810,6 +933,58 @@ Start with "RECOMMENDATION:" followed by APPROVE, APPROVE WITH CONDITIONS, or DE
   btn.disabled = false;
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
+
+
+/* ================= COMPARE MODE ================= */
+let pinned = null;
+function paintCompare() {
+  if (!pinned) return;
+  const { r, irr, mc, ue, p } = latest;
+  const setD = (id, a, b, fmt, higherBetter = true) => {
+    $('ca-' + id).textContent = fmt(a);
+    $('cb-' + id).textContent = fmt(b);
+    const d = b - a, cell = $('cd-' + id);
+    cell.textContent = (d >= 0 ? '+' : '') + fmt(d).replace('+', '');
+    cell.className = (higherBetter ? d >= 0 : d <= 0) ? 'pos' : 'neg';
+  };
+  setD('npv', pinned.npv, r.npv, fmtM);
+  $('ca-irr').textContent = pinned.irr === null ? 'n/a' : fmtPct(pinned.irr);
+  $('cb-irr').textContent = irr === null ? 'n/a' : fmtPct(irr);
+  if (pinned.irr !== null && irr !== null) {
+    const d = irr - pinned.irr, cell = $('cd-irr');
+    cell.textContent = (d >= 0 ? '+' : '−') + Math.abs(d * 100).toFixed(1) + 'pp';
+    cell.className = d >= 0 ? 'pos' : 'neg';
+  } else $('cd-irr').textContent = '—';
+  const pbA = pinned.payback, pbB = r.payback;
+  $('ca-pb').textContent = pbA ? 'm' + pbA : '>' + pinned.months + 'm';
+  $('cb-pb').textContent = pbB ? 'm' + pbB : '>' + p.months + 'm';
+  if (pbA && pbB) { const d = pbB - pbA, cell = $('cd-pb'); cell.textContent = (d >= 0 ? '+' : '') + d + ' mo'; cell.className = d <= 0 ? 'pos' : 'neg'; }
+  else $('cd-pb').textContent = '—';
+  const probD = mc.probPos - pinned.prob, pc = $('cd-prob');
+  $('ca-prob').textContent = (pinned.prob * 100).toFixed(0) + '%';
+  $('cb-prob').textContent = (mc.probPos * 100).toFixed(0) + '%';
+  pc.textContent = (probD >= 0 ? '+' : '−') + Math.abs(probD * 100).toFixed(0) + 'pp';
+  pc.className = probD >= 0 ? 'pos' : 'neg';
+  const ratioD = ue.ratio - pinned.ratio, rc = $('cd-ltv');
+  $('ca-ltv').textContent = pinned.ratio.toFixed(1) + 'x';
+  $('cb-ltv').textContent = ue.ratio.toFixed(1) + 'x';
+  rc.textContent = (ratioD >= 0 ? '+' : '−') + Math.abs(ratioD).toFixed(1) + 'x';
+  rc.className = ratioD >= 0 ? 'pos' : 'neg';
+}
+$('btn-pin').addEventListener('click', () => {
+  pinned = { name: $('s-name').value || 'Deal A', npv: latest.r.npv, irr: latest.irr, payback: latest.r.payback,
+             months: latest.p.months, prob: latest.mc.probPos, ratio: latest.ue.ratio };
+  $('cmp-name-a').textContent = pinned.name;
+  $('cmp-box').classList.add('show');
+  $('btn-unpin').style.display = '';
+  paintCompare();
+});
+$('btn-unpin').addEventListener('click', () => {
+  pinned = null;
+  $('cmp-box').classList.remove('show');
+  $('btn-unpin').style.display = 'none';
+});
+$('mc-corr').addEventListener('change', () => recalc());
 
 /* ================= SETUP PANEL EVENTS ================= */
 $('s-template').addEventListener('change', e => { applyTemplate(e.target.value); scenarioBase = null; recalc(); });
